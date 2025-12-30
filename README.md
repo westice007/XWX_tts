@@ -46,6 +46,9 @@ https://huggingface.co/westice/xwx_tts
 测试运行源码
 
 language := "yue_en"
+
 deviceType := GPU //CPU
+
 newEngine, err := NewXWX_TTS(language, deviceType)
+
 newEngine.TtsTest("测试中文字符， are you ok?", "output.wav")
