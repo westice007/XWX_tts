@@ -1,0 +1,5 @@
+﻿__pycache__
+onnxruntime-win-x64-gpu-1.23.2
+tts-win.exe
+*.onnx
+mandaren_pinyin_httpservice-linux
