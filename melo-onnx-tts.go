@@ -245,10 +245,13 @@ func (m *XWX_TTS)prepareModelPath() {
 	}
 	if m.language == ZH_X {
 		m.ttsModelPath = 	  "./zh_x_tts-model.onnx"
-		m.bertModelPath = 	  "./bert-base-multilingual-cased.onnx"
-		m.bertTokenizerPath = "./bert-base-multilingual-cased.json"
+		m.bertModelPath = 	  "./bert-base-multilingual-uncased.onnx"
+		m.bertTokenizerPath = "./bert-base-multilingual-uncased.json"
 	}
 
+	//fmt.Println("m.language:", m.language)
+	//fmt.Println("m.ttsModelPath:", m.ttsModelPath)
+	
 	// 检查文件是否存在
 	if _, err := os.Stat(m.ttsModelPath); os.IsNotExist(err) {
 		panic(fmt.Sprintf("模型文件不存在: %s", m.ttsModelPath))
@@ -299,12 +302,12 @@ func (m *XWX_TTS)mapping_phones(phones []string) []int64 {
 	return mappedPhones
 }
 
-func (m *XWX_TTS)mapping_tones(tones []int) []int64 {
+func (m *XWX_TTS)mapping_tones(tones []int, offset int) []int64 {
 	// 映射到模型支持的 tones 列表，并添加隔位0，
 	mappedTones := []int64{}
 	for _, tone := range tones {
 		mappedTones = append(mappedTones, 0) //有个偏移20，因为还有melotts的默认其它语言
-		mappedTones = append(mappedTones, int64(tone + 20))		
+		mappedTones = append(mappedTones, int64(tone + offset))		
 	}
 	mappedTones = append(mappedTones, 0) //尾部再加一个
 	return mappedTones
@@ -329,13 +332,16 @@ func (m *XWX_TTS)Tts_pcm(text string, speakerid int, speed float32) []float32 {
 	mix_word2ph := []int{1}
 	filteredText := ""
 
+	toneOffset := 20
 	if m.language == YUE_EN {
+		toneOffset = 20
 		mix_phones ,mix_tones, mix_word2ph, filteredText = CantoneseMix_g2p(text, m.bertExtractor)
 	} else if m.language == ZH_X {
+		toneOffset = 14
 		mix_phones ,mix_tones, mix_word2ph, filteredText = MandarenMix_g2p(text, m.bertExtractor)
 	}
 	mappedPhones := m.mapping_phones(mix_phones)
-	mappedTones := m.mapping_tones(mix_tones)
+	mappedTones := m.mapping_tones(mix_tones, toneOffset)
 	mappedWord2ph := m.mapping_word2ph(mix_word2ph)
 		
 	mappedPhonesLen := int64(len(mappedPhones))
@@ -355,6 +361,7 @@ func (m *XWX_TTS)Tts_pcm(text string, speakerid int, speed float32) []float32 {
 	tonesShape := ort.NewShape(1, mappedTonesLen)
 	tonesTensor, _ := ort.NewTensor(tonesShape, mappedTones) // tones 数据	
 	defer tonesTensor.Destroy()
+	fmt.Printf("mappedTones: %v \n", mappedTones)
 	
 	sidData := []int64{int64(speakerid)} //speakerid ,外部指定
 	sidShape := ort.NewShape(1)
@@ -367,13 +374,13 @@ func (m *XWX_TTS)Tts_pcm(text string, speakerid int, speed float32) []float32 {
     defer bertTensor.Destroy()
 
 	jaBertTensor, err := m.bertExtractor.ExtractFeaturesForTTS(filteredText, mappedWord2ph)
-	//fmt.Println("jaBertTensor形状:", jaBertTensor.GetShape())
+	fmt.Println("jaBertTensor形状:", jaBertTensor.GetShape())
 	if err != nil {
 		fmt.Printf("提取JA-BERT特征失败: %v", err)
 	}
 	defer jaBertTensor.Destroy()
 
-	sdpRatioData := []float32{0.2}
+	sdpRatioData := []float32{0.5}
 	sdpRatioShape := ort.NewShape(1)
 	sdpRatioTensor, _ := ort.NewTensor(sdpRatioShape, sdpRatioData) // sdp_ratio 数据
 	defer sdpRatioTensor.Destroy()
@@ -383,7 +390,8 @@ func (m *XWX_TTS)Tts_pcm(text string, speakerid int, speed float32) []float32 {
 	noiseScaleTensor, _ := ort.NewTensor(noiseScaleShape, noiseScaleData) // noise_scale 数据
 	defer noiseScaleTensor.Destroy()
 
-	noiseScaleWTensor, _ := ort.NewEmptyTensor[float32](noiseScaleShape)
+	//noiseScaleWTensor, _ := ort.NewEmptyTensor[float32](noiseScaleShape)
+	noiseScaleWTensor, _ := ort.NewTensor(noiseScaleShape, []float32{0.9})
     defer noiseScaleWTensor.Destroy()
 
 
