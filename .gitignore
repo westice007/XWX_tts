@@ -3,3 +3,6 @@ onnxruntime-win-x64-gpu-1.23.2
 tts-win.exe
 *.onnx
 mandaren_pinyin_httpservice-linux
+onnxruntime-linux-x64-gpu-1.23.2.tgz
+onnxruntime-linux-x64-gpu-1.23.2
+tts-linux
