@@ -4,6 +4,9 @@ import (
 	"strings"
 	"regexp"
 	"strconv"
+	"io"
+	"net/http"
+	"encoding/json"
 	pinyin_sentence "github.com/Lofanmi/pinyin-golang/pinyin"
 )
 
@@ -100,7 +103,8 @@ func handleYW(p string) string {
 }
 
 
-func Mandaren_pinyin(zh_text string) []map[string]string {
+// Mandaren_pinyin_old 旧函数备份，使用本地 pinyin-golang 库
+func Mandaren_pinyin_old(zh_text string) []map[string]string {
 	retPinyins := []map[string]string{}	
 
 	pys := pinyinSentenceDict.Convert(zh_text, " ").ASCII()
@@ -117,5 +121,64 @@ func Mandaren_pinyin(zh_text string) []map[string]string {
 		retPinyins = append(retPinyins, itemMap)
 		
 	}
+	return retPinyins
+}
+
+// Mandaren_pinyin 新函数，调用 py_textpinyin_service.py 的 HTTP 接口
+func Mandaren_pinyin(zh_text string) []map[string]string {
+	retPinyins := []map[string]string{}
+	
+	// 构建请求体
+	requestBody := strings.NewReader(`{"text":"` + zh_text + `"}`)
+	
+	// 调用 Python 服务
+	req, err := http.NewRequest("POST", "http://127.0.0.1:48001/mandaren_pinyin", requestBody)
+	if err != nil {
+		// 如果调用失败，回退到旧函数
+		return Mandaren_pinyin_old(zh_text)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		// 如果调用失败，回退到旧函数
+		return Mandaren_pinyin_old(zh_text)
+	}
+	defer resp.Body.Close()
+	
+	// 读取响应
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		// 如果读取失败，回退到旧函数
+		return Mandaren_pinyin_old(zh_text)
+	}
+	
+	// 解析 JSON 响应
+	var result map[string][]map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		// 如果解析失败，回退到旧函数
+		return Mandaren_pinyin_old(zh_text)
+	}
+	
+	// 提取结果
+	if pinyinList, ok := result["text"]; ok {
+		for _, item := range pinyinList {
+			initial, _ := item["initial"].(string)
+			final, _ := item["final"].(string)
+			tone := 0
+			if t, ok := item["tone"].(float64); ok {
+				tone = int(t)
+			}
+			
+			itemMap := map[string]string{
+				"initial": initial,
+				"final": final,
+				"tone": strconv.Itoa(tone),
+			}
+			retPinyins = append(retPinyins, itemMap)
+		}
+	}
+	
 	return retPinyins
 }

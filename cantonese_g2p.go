@@ -209,7 +209,7 @@ func request_jyuping(sentences map[string]string) map[string]interface{} {
     // 4. 创建请求，使用 jsonBytes 作为请求体
     req, err := http.NewRequest(
         "POST",
-        "http://127.0.0.1:48000/cantonese_split",
+        "http://172.18.11.119:48000/cantonese_split",
         bytes.NewReader(jsonBytes),
     )
     // 4. 创建请求

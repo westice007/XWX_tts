@@ -239,6 +239,10 @@ func languagesHandler(c *gin.Context) {
 
 // 启动HTTP服务函数
 func StartTTSHTTPService(port string) {
+	//拼音测试
+	//Mandaren_pinyin_Test()
+
+
 	// 设置Gin为生产模式
 	gin.SetMode(gin.ReleaseMode)
 

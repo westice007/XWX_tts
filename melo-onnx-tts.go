@@ -239,7 +239,7 @@ func (m *XWX_TTS) init_bert_model() {
 func (m *XWX_TTS)prepareModelPath() {
 	// 根据语言设置模型路径
 	if m.language == YUE_EN {
-		m.ttsModelPath = 	  "./yue_en_tts-model.onnx"
+		m.ttsModelPath = 	  "./yueen_yunlonghk_tts-model.onnx"
 		m.bertModelPath = 	  "./bert-base-multilingual-cased.onnx"
 		m.bertTokenizerPath = "./bert-base-multilingual-cased.json"
 	}
